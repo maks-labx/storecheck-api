@@ -1,0 +1,30 @@
+services:
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_NAME=storecheck_db
+      - DB_USER=storecheck_user
+      - DB_PASSWORD=storecheck_password
+      - DB_HOST=db
+      - DB_PORT=5432
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=storecheck_db
+      - POSTGRES_USER=storecheck_user
+      - POSTGRES_PASSWORD=storecheck_password
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
