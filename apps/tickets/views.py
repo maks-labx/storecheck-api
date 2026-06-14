@@ -18,3 +18,27 @@ class TicketViewSet(
     )
     serializer_class = TicketSerializer
     http_method_names = ["get", "patch", "head", "options"]
+
+    filterset_fields = (
+        "status",
+        "store",
+        "contractor",
+        "responsible_engineer",
+        "created_by",
+    )
+    search_fields = (
+        "ticket_number",
+        "title",
+        "description",
+        "store__address",
+        "contractor__name",
+        "responsible_engineer__first_name",
+        "responsible_engineer__last_name",
+    )
+    ordering_fields = (
+        "created_at",
+        "due_date",
+        "ticket_number",
+        "status",
+    )
+    ordering = ("due_date", "-created_at")
