@@ -1,4 +1,14 @@
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import (
+    ChecklistItemSerializer,
+    ChecklistSectionSerializer,
+    InspectionItemResultSerializer,
+    InspectionSerializer,
+    SubmitInspectionReportSerializer,
+)
 
 from .models import (
     ChecklistItem,
@@ -27,6 +37,29 @@ class InspectionViewSet(ReadOnlyModelViewSet):
         "inspector",
     )
     serializer_class = InspectionSerializer
+
+    @action(detail=False, methods=["post"], url_path="submit-report")
+    def submit_report(self, request):
+        serializer = SubmitInspectionReportSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+
+        return Response(
+            {
+                "inspection": InspectionSerializer(result["inspection"]).data,
+                "tickets_created": len(result["tickets"]),
+                "tickets": [
+                    {
+                        "id": ticket.id,
+                        "ticket_number": ticket.ticket_number,
+                        "title": ticket.title,
+                        "due_date": ticket.due_date,
+                    }
+                    for ticket in result["tickets"]
+                ],
+            },
+            status = status.HTTP_201_CREATED,
+        )
 
 class InspectionItemResultViewSet(ReadOnlyModelViewSet):
     queryset = InspectionItemResult.objects.select_related(

@@ -1,4 +1,7 @@
 from rest_framework import serializers
+from django.db import transaction
+from apps.tickets.services import create_ticket_from_inspection_result
+from apps.company.models import Employee, Store
 from .models import (
     ChecklistItem,
     ChecklistSection,
@@ -80,3 +83,88 @@ class InspectionItemResultSerializer(serializers.ModelSerializer):
             "status",
             "description",
         )
+
+class SubmitInspectionItemResultSerializer(serializers.Serializer):
+    checklist_item = serializers.PrimaryKeyRelatedField(
+        queryset = ChecklistItem.objects.filter(is_active=True),
+    )
+    status = serializers.ChoiceField(
+        choices = InspectionItemResult.Status.choices,
+    )
+    description = serializers.CharField(
+        required = False,
+        allow_blank = True,
+    )
+
+    def validate(self, attrs):
+        status = attrs["status"]
+        description = attrs.get("description", "")
+
+        if status == InspectionItemResult.Status.PROBLEM and not description.strip():
+            raise serializers.ValidationError(
+                {"description": "Description is required when a problem is found."}
+            )
+        
+        if status == InspectionItemResult.Status.OK and description.strip():
+            raise serializers.ValidationError(
+                {"description": "Description should be empty when item status is OK."}
+            )
+        
+        return attrs
+
+class SubmitInspectionReportSerializer(serializers.Serializer):
+    store = serializers.PrimaryKeyRelatedField(
+        queryset = Store.objects.all(),
+    )
+    inspector = serializers.PrimaryKeyRelatedField(
+        queryset = Employee.objects.filter(position=Employee.Position.ENGINEER),
+    )
+    results = SubmitInspectionItemResultSerializer(many=True)
+
+    def validate_results(self, results):
+        active_item_ids = set(
+            ChecklistItem.objects.filter(is_active=True).values_list("id", flat=True)
+        )
+        submitted_item_ids = {item["checklist_item"].id for item in results}
+        missing_item_ids = active_item_ids - submitted_item_ids
+        extra_item_ids = submitted_item_ids - active_item_ids
+
+        if missing_item_ids:
+            raise serializers.ValidationError(
+                f"Missing checklist items: {sorted(missing_item_ids)}"
+            )
+        
+        if extra_item_ids:
+            raise serializers.ValidationError(
+                f"Invalid checklist items: {sorted(extra_item_ids)}"
+            )
+        
+        if len(submitted_item_ids) != len(results):
+            raise serializers.ValidationError(
+                "Each checklist item can be submitted only once."
+            )
+        
+        return results
+    
+    def create(self, validated_data):
+        results_data = validated_data.pop("results")
+
+        with transaction.atomic():
+            inspection = Inspection.objects.create(**validated_data)
+
+            created_tickets = []
+
+            for result_data in results_data:
+                result = InspectionItemResult.objects.create(
+                    inspection = inspection,
+                    **result_data,
+                )
+
+                if result.status == InspectionItemResult.Status.PROBLEM:
+                    ticket = create_ticket_from_inspection_result(result)
+                    created_tickets.append(ticket)
+
+        return {
+            "inspection": inspection,
+            "tickets": created_tickets,
+        }
