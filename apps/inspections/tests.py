@@ -1,5 +1,6 @@
 from rest_framework import status
 from rest_framework.test import APITestCase
+from django.contrib.auth import get_user_model
 
 from apps.company.models import Cluster, Contractor, Employee, Store
 from apps.inspections.models import (
@@ -12,6 +13,13 @@ from apps.tickets.models import Ticket
 
 class SubmitInspectionReportAPITestCase(APITestCase):
     def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            username = "testuser",
+            password = "testpass123",
+        )
+        self.client.force_authenticate(user=self.user)
+
         self.cluster_director = Employee.objects.create(
             employee_number = 1001,
             first_name = "John",
@@ -151,6 +159,33 @@ class SubmitInspectionReportAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+        self.assertEqual(Inspection.objects.count(), 0)
+        self.assertEqual(InspectionItemResult.objects.count(), 0)
+        self.assertEqual(Ticket.objects.count(), 0)
+
+    def test_anonymous_user_cannot_submit_report(self):
+        self.client.force_authenticate(user=None)
+
+        payload = {
+            "store": self.store.id,
+            "inspector": self.engineer.id,
+            "results": [
+                {
+                    "checklist_item": self.floor_item.id,
+                    "status": InspectionItemResult.Status.OK,
+                    "description": "",
+                },
+                {
+                    "checklist_item": self.lighting_item.id,
+                    "status": InspectionItemResult.Status.OK,
+                    "description": "",
+                },
+            ],
+        }
+
+        response = self.client.post(self.url, payload, format = "json")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(Inspection.objects.count(), 0)
         self.assertEqual(InspectionItemResult.objects.count(), 0)
         self.assertEqual(Ticket.objects.count(), 0)
