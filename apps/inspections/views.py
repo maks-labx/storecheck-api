@@ -2,6 +2,7 @@ from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from .serializers import (
     ChecklistItemSerializer,
     ChecklistSectionSerializer,
@@ -83,6 +84,72 @@ class InspectionViewSet(ReadOnlyModelViewSet):
     )
     ordering = ("-submitted_at",)
 
+    @extend_schema(
+            summary = "Submit inspection report",
+            description = (
+                "Creates an inspection report with item results. "
+                "For each result with status 'problem', a maintenance ticket is created automatically."
+            ),
+            request = SubmitInspectionReportSerializer,
+            responses = {
+                201: OpenApiResponse(
+                    description = "Inspection report submitted successfully. Tickets are created for problem items.",
+                    examples = [
+                        OpenApiExample(
+                            "Succesful response",
+                            value = {
+                                "inspection": {
+                                    "id": 1,
+                                    "store": 1,
+                                    "store_number": 101,
+                                    "inspector": 3,
+                                    "inspector_name": "Mike Engineer",
+                                    "submitted_at": "2026-06-15T12:00:00Z",
+                                },
+                                "tickets_created": 1,
+                                "tickets": [
+                                    {
+                                        "id": 1,
+                                        "ticket_number": "000001",
+                                        "title": "Sales floor / Floor",
+                                        "due_date": "2026-06-18",
+                                    }
+                                ],
+                            },
+                            response_only = True,
+                        )
+                    ],
+                ),
+                400: OpenApiResponse(
+                    description = "Validation error. For example, a problem item without description or missing checklist items.",
+                ),
+                403: OpenApiResponse(
+                    description = "Authentication credentials were not provided.",
+                ),
+            },
+            examples = [
+                OpenApiExample(
+                    "Submit inspection report",
+                    value = {
+                        "store": 1,
+                        "inspector": 3,
+                        "results": [
+                            {
+                                "checklist_item": 1,
+                                "status": "ok",
+                                "description": "",
+                            },
+                            {
+                                "checklist_item": 2,
+                                "status": "problem",
+                                "description": "Broken floor tiles near the entrance.",
+                            },
+                        ],
+                    },
+                    request_only = True,
+                )
+            ],
+    )
     @action(detail=False, methods=["post"], url_path="submit-report")
     def submit_report(self, request):
         serializer = SubmitInspectionReportSerializer(data=request.data)
