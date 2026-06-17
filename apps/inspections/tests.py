@@ -189,3 +189,41 @@ class SubmitInspectionReportAPITestCase(APITestCase):
         self.assertEqual(Inspection.objects.count(), 0)
         self.assertEqual(InspectionItemResult.objects.count(), 0)
         self.assertEqual(Ticket.objects.count(), 0)
+
+    def test_submit_report_creates_multiple_tickets_for_multiple_problems(self):
+        payload = {
+            "store": self.store.id,
+            "inspector": self.engineer.id,
+            "results": [
+                {
+                    "checklist_item": self.floor_item.id,
+                    "status": InspectionItemResult.Status.PROBLEM,
+                    "description": "Broken floor tiles near the entrance.",
+                },
+                {
+                    "checklist_item": self.lighting_item.id,
+                    "status": InspectionItemResult.Status.PROBLEM,
+                    "description": "Several lights are not working.",
+                },
+            ],
+        }
+
+        response = self.client.post(self.url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        self.assertEqual(Inspection.objects.count(), 1)
+        self.assertEqual(InspectionItemResult.objects.count(), 2)
+        self.assertEqual(Ticket.objects.count(), 2)
+
+        self.assertEqual(response.data["tickets_created"], 2)
+        self.assertEqual(len(response.data["tickets"]), 2)
+
+        ticket_titles = list(Ticket.objects.values_list("title", flat=True))
+        ticket_descriptions = list(Ticket.objects.values_list("description", flat=True))
+
+        self.assertTrue(any("Floor" in title for title in ticket_titles))
+        self.assertTrue(any("Lighting" in title for title in ticket_titles))
+
+        self.assertIn("Broken floor tiles near the entrance.", ticket_descriptions)
+        self.assertIn("Several lights are not working.", ticket_descriptions)
