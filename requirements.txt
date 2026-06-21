@@ -3,3 +3,4 @@ psycopg[binary]
 djangorestframework
 drf-spectacular
 django-filter
+djangorestframework-simplejwt

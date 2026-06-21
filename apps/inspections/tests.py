@@ -185,7 +185,7 @@ class SubmitInspectionReportAPITestCase(APITestCase):
 
         response = self.client.post(self.url, payload, format = "json")
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(Inspection.objects.count(), 0)
         self.assertEqual(InspectionItemResult.objects.count(), 0)
         self.assertEqual(Ticket.objects.count(), 0)
