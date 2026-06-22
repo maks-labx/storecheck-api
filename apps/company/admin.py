@@ -3,8 +3,8 @@ from .models import Employee, Cluster, Contractor, Store
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ("employee_number", "first_name", "last_name", "position", "manager")
-    search_fields = ("=employee_number", "first_name", "last_name")
+    list_display = ("employee_number", "first_name", "last_name", "position", "user", "manager")
+    search_fields = ("=employee_number", "first_name", "last_name", "user__username", "user__email",)
     list_filter = ("position",)
 
 @admin.register(Cluster)

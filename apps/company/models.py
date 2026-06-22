@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 class Employee(models.Model):
     class Position(models.TextChoices):
@@ -6,6 +7,14 @@ class Employee(models.Model):
         STORE_DIRECTOR = "store_director", "Store Director"
         CHEIF_ENGINEER = "chief_engineer", "Chief Engineer"
         ENGINEER = "engineer", "Engineer"
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="employee",
+    )
 
     employee_number = models.PositiveIntegerField(unique=True)
     first_name = models.CharField(max_length=100)
