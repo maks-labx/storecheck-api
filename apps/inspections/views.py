@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
+from .permissions import IsEngineer
 from .serializers import (
     ChecklistItemSerializer,
     ChecklistSectionSerializer,
@@ -150,7 +151,7 @@ class InspectionViewSet(ReadOnlyModelViewSet):
                 )
             ],
     )
-    @action(detail=False, methods=["post"], url_path="submit-report")
+    @action(detail=False, methods=["post"], url_path="submit-report", permission_classes=[IsEngineer])
     def submit_report(self, request):
         serializer = SubmitInspectionReportSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

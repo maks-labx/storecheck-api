@@ -39,6 +39,17 @@ class SubmitInspectionReportAPITestCase(APITestCase):
             position = Employee.Position.ENGINEER,
         )
 
+        self.engineer.user = self.user
+        self.engineer.save(update_fields=["user"])
+
+        self.store_director_user = User.objects.create_user(
+            username = "store_director",
+            password = "testpass123",
+        )
+
+        self.store_director.user = self.store_director_user
+        self.store_director.save(update_fields=["user"])
+
         self.cluster = Cluster.objects.create(
             name = "Chicago West",
             cluster_director = self.cluster_director,
@@ -227,3 +238,28 @@ class SubmitInspectionReportAPITestCase(APITestCase):
 
         self.assertIn("Broken floor tiles near the entrance.", ticket_descriptions)
         self.assertIn("Several lights are not working.", ticket_descriptions)
+
+    def test_store_director_cannot_submit_report(self):
+        self.client.force_authenticate(user=self.store_director_user)
+
+        payload = {
+            "store": self.store.id,
+            "inspector": self.engineer.id,
+            "results": [
+                {
+                    "checklist_item": self.floor_item.id,
+                    "status": InspectionItemResult.Status.OK,
+                    "description": "",
+                },
+                {
+                    "checklist_item": self.lighting_item.id,
+                    "status": InspectionItemResult.Status.OK,
+                    "description": "",
+                },
+            ],
+        }
+
+        response = self.client.post(self.url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Inspection.objects.count(), 0)
