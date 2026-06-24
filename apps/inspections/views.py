@@ -133,7 +133,6 @@ class InspectionViewSet(ReadOnlyModelViewSet):
                     "Submit inspection report",
                     value = {
                         "store": 1,
-                        "inspector": 3,
                         "results": [
                             {
                                 "checklist_item": 1,
@@ -155,7 +154,9 @@ class InspectionViewSet(ReadOnlyModelViewSet):
     def submit_report(self, request):
         serializer = SubmitInspectionReportSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        result = serializer.save()
+        result = serializer.save(
+            inspector = request.user.employee,
+        )
 
         return Response(
             {

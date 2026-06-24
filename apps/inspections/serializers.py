@@ -116,9 +116,6 @@ class SubmitInspectionReportSerializer(serializers.Serializer):
     store = serializers.PrimaryKeyRelatedField(
         queryset = Store.objects.all(),
     )
-    inspector = serializers.PrimaryKeyRelatedField(
-        queryset = Employee.objects.filter(position=Employee.Position.ENGINEER),
-    )
     results = SubmitInspectionItemResultSerializer(many=True)
 
     def validate_results(self, results):

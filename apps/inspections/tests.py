@@ -92,7 +92,6 @@ class SubmitInspectionReportAPITestCase(APITestCase):
     def test_submit_report_creates_inspection_results_and_ticket(self):
         payload = {
             "store": self.store.id,
-            "inspector": self.engineer.id,
             "results": [
                 {
                     "checklist_item": self.floor_item.id,
@@ -115,6 +114,9 @@ class SubmitInspectionReportAPITestCase(APITestCase):
         self.assertEqual(InspectionItemResult.objects.count(), 2)
         self.assertEqual(Ticket.objects.count(), 1)
 
+        inspection = Inspection.objects.get()
+        self.assertEqual(inspection.inspector, self.engineer)
+
         ticket = Ticket.objects.first()
 
         self.assertEqual(ticket.store, self.store)
@@ -130,7 +132,6 @@ class SubmitInspectionReportAPITestCase(APITestCase):
     def test_problem_without_description_returns_400(self):
         payload = {
             "store": self.store.id,
-            "inspector": self.engineer.id,
             "results": [
                 {
                     "checklist_item": self.floor_item.id,
@@ -156,7 +157,6 @@ class SubmitInspectionReportAPITestCase(APITestCase):
     def test_missing_checklist_item_returns_400(self):
         payload = {
             "store": self.store.id,
-            "inspector": self.engineer.id,
             "results": [
                 {
                     "checklist_item": self.floor_item.id,
@@ -179,7 +179,6 @@ class SubmitInspectionReportAPITestCase(APITestCase):
 
         payload = {
             "store": self.store.id,
-            "inspector": self.engineer.id,
             "results": [
                 {
                     "checklist_item": self.floor_item.id,
@@ -204,7 +203,6 @@ class SubmitInspectionReportAPITestCase(APITestCase):
     def test_submit_report_creates_multiple_tickets_for_multiple_problems(self):
         payload = {
             "store": self.store.id,
-            "inspector": self.engineer.id,
             "results": [
                 {
                     "checklist_item": self.floor_item.id,
@@ -244,7 +242,6 @@ class SubmitInspectionReportAPITestCase(APITestCase):
 
         payload = {
             "store": self.store.id,
-            "inspector": self.engineer.id,
             "results": [
                 {
                     "checklist_item": self.floor_item.id,
