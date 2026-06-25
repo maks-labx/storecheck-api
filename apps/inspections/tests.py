@@ -260,3 +260,23 @@ class SubmitInspectionReportAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(Inspection.objects.count(), 0)
+
+    def test_anonymous_user_cannot_view_stores(self):
+        self.client.force_authenticate(user = None)
+
+        response = self.client.get("/api/stores/")
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+
+    def test_authenticated_user_can_view_stores(self):
+        self.client.force_authenticate(user = self.user)
+
+        response = self.client.get("/api/stores/")
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+        )
