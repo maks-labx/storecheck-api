@@ -6,10 +6,12 @@ from .serializers import (
     EmployeeSerializer,
     StoreSerializer
 )
+from apps.common.permissions import IsAdminOrAuthenticatedReadOnly
 
 class EmployeeViewSet(ModelViewSet):
     queryset = Employee.objects.all()
     serializer_class = EmployeeSerializer
+    permission_classes = [IsAdminOrAuthenticatedReadOnly]
 
     filterset_fields = (
         "position",
@@ -30,6 +32,7 @@ class EmployeeViewSet(ModelViewSet):
 class ClusterViewSet(ModelViewSet):
     queryset = Cluster.objects.all()
     serializer_class = ClusterSerializer
+    permission_classes = [IsAdminOrAuthenticatedReadOnly]
 
     search_fields = (
         "name",
@@ -42,6 +45,7 @@ class ClusterViewSet(ModelViewSet):
 class ContractorViewSet(ModelViewSet):
     queryset = Contractor.objects.all()
     serializer_class = ContractorSerializer
+    permission_classes = [IsAdminOrAuthenticatedReadOnly]
 
     search_fields = (
         "name",
@@ -56,6 +60,7 @@ class ContractorViewSet(ModelViewSet):
 class StoreViewSet(ModelViewSet):
     queryset = Store.objects.all()
     serializer_class = StoreSerializer
+    permission_classes = [IsAdminOrAuthenticatedReadOnly]
 
     filterset_fields = (
         "cluster",

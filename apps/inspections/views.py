@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from .permissions import IsEngineer
+from apps.common.permissions import IsAdminOrAuthenticatedReadOnly
 from .serializers import (
     ChecklistItemSerializer,
     ChecklistSectionSerializer,
@@ -28,6 +29,7 @@ from .serializers import (
 class ChecklistSectionViewSet(ModelViewSet):
     queryset = ChecklistSection.objects.all()
     serializer_class = ChecklistSectionSerializer
+    permission_classes = [IsAdminOrAuthenticatedReadOnly]
 
     filterset_fields = (
         "is_active",
@@ -44,6 +46,7 @@ class ChecklistSectionViewSet(ModelViewSet):
 class ChecklistItemViewSet(ModelViewSet):
     queryset = ChecklistItem.objects.all()
     serializer_class = ChecklistItemSerializer
+    permission_classes = [IsAdminOrAuthenticatedReadOnly]
 
     filterset_fields = (
         "section",
