@@ -6,10 +6,8 @@ from apps.inspections.models import InspectionItemResult
 
 class Ticket(models.Model):
     class Status(models.TextChoices):
-        NEW = "new", "New"
-        IN_PROGRESS = "in_progress", "In Progress"
-        DONE = "done", "Done"
-        CANCELLED = "cancelled", "Cancelled"
+        OPEN = "open", "Open"
+        CLOSED = "closed", "Closed"
 
     ticket_number = models.CharField(
         max_length=6,
@@ -47,7 +45,7 @@ class Ticket(models.Model):
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
-        default=Status.NEW,
+        default=Status.OPEN,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     due_date = models.DateField()
@@ -66,7 +64,7 @@ class Ticket(models.Model):
     @property
     def is_overdue(self):
         return (
-            self.status not in [self.Status.DONE, self.Status.CANCELLED]
+            self.status != self.Status.CLOSED
             and timezone.now().date() > self.due_date
         )
     

@@ -123,7 +123,7 @@ class SubmitInspectionReportAPITestCase(APITestCase):
         self.assertEqual(ticket.created_by, self.engineer)
         self.assertEqual(ticket.responsible_engineer, self.engineer)
         self.assertEqual(ticket.contractor, self.contractor)
-        self.assertEqual(ticket.status, Ticket.Status.NEW)
+        self.assertEqual(ticket.status, Ticket.Status.OPEN)
         self.assertEqual(ticket.description, "Broken floor tiles near the entrance.")
         self.assertIn("Floor", ticket.title)
 
