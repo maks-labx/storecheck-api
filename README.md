@@ -14,6 +14,7 @@ The project is based on a simplified real-world business process: an engineer in
 * Docker Compose
 * drf-spectacular / OpenAPI / Swagger
 * django-filter
+* djangorestframework-simplejwt
 
 ## Main Features
 
@@ -28,6 +29,13 @@ The project is based on a simplified real-world business process: an engineer in
   * checklist sections
   * checklist items
   * active/inactive checklist items
+* JWT authentication
+* Employee accounts linked to Django users
+* Role-based access control:
+
+  * authenticated users can access internal API data
+  * only engineers can submit inspection reports
+  * reference data can be modified only by admin/staff users
 * Inspection report submission endpoint
 * Validation rules for inspection reports:
 
@@ -37,23 +45,19 @@ The project is based on a simplified real-world business process: an engineer in
 * Automatic maintenance ticket creation from problem inspection results
 * Ticket status tracking:
 
-  * new
-  * in progress
-  * done
-  * cancelled
-* Ticket overdue detection
+  * open
+  * closed
+* Ticket overdue detection based on due date
 * API pagination
 * Filtering, search, and ordering for list endpoints
-* Basic API permissions:
-
-  * public read access
-  * authenticated write access
 * OpenAPI documentation with Swagger UI and ReDoc
-* Tests for the main inspection report submission flow
+* Tests for the main inspection report submission flow, authentication, permissions, and reference data access rules
 
 ## Business Flow
 
 ```text
+Engineer authenticates with JWT
+↓
 Engineer opens an inspection checklist
 ↓
 Engineer checks each active checklist item
@@ -64,11 +68,57 @@ If the item is marked as Problem, description is required
 ↓
 Engineer submits the report
 ↓
+The backend determines the inspector from the authenticated user
+↓
 The backend creates:
     - Inspection
     - Inspection item results
     - Maintenance tickets for all problem items
 ```
+
+## Authentication and Permissions
+
+The API uses JWT authentication.
+
+Token endpoints:
+
+```text
+POST /api/token/
+POST /api/token/refresh/
+```
+
+Example token request:
+
+```json
+{
+  "username": "engineer",
+  "password": "your-password"
+}
+```
+
+Use the returned access token in the Authorization header:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+Permission rules:
+
+```text
+Anonymous users:
+    - cannot access internal API endpoints
+
+Authenticated users:
+    - can view internal API data
+
+Engineers:
+    - can submit inspection reports
+
+Admin/staff users:
+    - can create, update, and delete reference data
+```
+
+The inspector is not submitted by the client. It is automatically determined from the authenticated Django user linked to an Employee record.
 
 ## API Documentation
 
@@ -92,6 +142,13 @@ http://127.0.0.1:8000/api/schema/
 
 ## Main API Endpoints
 
+### Authentication
+
+```text
+POST /api/token/
+POST /api/token/refresh/
+```
+
 ### Company
 
 ```text
@@ -100,6 +157,8 @@ GET /api/clusters/
 GET /api/contractors/
 GET /api/stores/
 ```
+
+Admin/staff users can also create, update, and delete company reference data.
 
 ### Checklist and Inspections
 
@@ -111,6 +170,10 @@ GET /api/inspection-results/
 POST /api/inspections/submit-report/
 ```
 
+Admin/staff users can create, update, and delete checklist sections and checklist items.
+
+Only engineers can submit inspection reports.
+
 ### Tickets
 
 ```text
@@ -121,10 +184,11 @@ PATCH /api/tickets/{id}/
 
 ## Submit Inspection Report Example
 
+The inspector is determined automatically from the authenticated user.
+
 ```json
 {
   "store": 1,
-  "inspector": 3,
   "results": [
     {
       "checklist_item": 1,
@@ -164,12 +228,33 @@ Successful response example:
 }
 ```
 
+## Ticket Statuses
+
+Tickets use a simplified status workflow:
+
+```text
+open
+closed
+```
+
+A new ticket is created with the `open` status.
+
+A ticket is considered overdue when:
+
+```text
+status is not closed
+and
+current date is later than due_date
+```
+
+Overdue state is calculated automatically and is not stored as a separate status.
+
 ## Filtering, Search, and Ordering Examples
 
 Filter tickets by status:
 
 ```text
-GET /api/tickets/?status=new
+GET /api/tickets/?status=open
 ```
 
 Search tickets by ticket number, title, description, or related data:
@@ -251,10 +336,18 @@ Or run tests in a temporary container:
 docker compose run --rm web python manage.py test
 ```
 
+Run Django system checks:
+
+```bash
+docker compose run --rm web python manage.py check
+```
+
 ## Project Structure
 
 ```text
 apps/
+  common/
+    permissions.py
   company/
     models.py
     serializers.py
@@ -265,6 +358,7 @@ apps/
     serializers.py
     views.py
     urls.py
+    permissions.py
   tickets/
     models.py
     serializers.py
@@ -278,12 +372,11 @@ config/
 
 ## Future Improvements
 
-* Manual ticket creation by store directors and engineers
-* JWT authentication
-* Role-based permissions
+* Restrict ticket closing to the store director or admin
+* Manual ticket creation by store directors
 * Photo attachments for inspection problems and tickets
 * Ticket comments and history
-* More detailed ticket lifecycle
+* Demo data management command
 * Production deployment
 * Extended test coverage
 
