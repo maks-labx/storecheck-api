@@ -2,6 +2,7 @@ from rest_framework import mixins
 from rest_framework.viewsets import GenericViewSet
 from .models import Ticket
 from .serializers import TicketSerializer
+from .permissions import CanUpdateTicketsStatus
 
 class TicketViewSet(
     mixins.ListModelMixin,
@@ -17,6 +18,7 @@ class TicketViewSet(
         "contractor",
     )
     serializer_class = TicketSerializer
+    permission_classes = [CanUpdateTicketsStatus]
     http_method_names = ["get", "patch", "head", "options"]
 
     filterset_fields = (
