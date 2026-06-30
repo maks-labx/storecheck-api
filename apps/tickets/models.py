@@ -18,7 +18,9 @@ class Ticket(models.Model):
     source_result = models.OneToOneField(
         InspectionItemResult,
         on_delete=models.PROTECT,
-        related_name="ticket"
+        related_name="ticket",
+        null=True,
+        blank=True,
     )
     title = models.CharField(max_length=200)
     description = models.TextField()
