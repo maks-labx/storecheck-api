@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from .models import Ticket
+from django.utils import timezone
+from rest_framework import serializers
+from apps.company.models import Store
 
 class TicketSerializer(serializers.ModelSerializer):
     store_number = serializers.IntegerField(
@@ -60,4 +63,38 @@ class TicketSerializer(serializers.ModelSerializer):
         return (
             f"{obj.responsible_engineer.first_name} "
             f"{obj.responsible_engineer.last_name}"
+        )
+
+class ManualTicketCreateSerializer(serializers.ModelSerializer):
+    store = serializers.PrimaryKeyRelatedField(
+        queryset = Store.objects.all()
+    )
+
+    class Meta:
+        model = Ticket
+        fields = (
+            "store",
+            "title",
+            "description",
+            "due_date",
+        )
+
+    def validate_due_date(self, value):
+        if value < timezone.now().date():
+            raise serializers.ValidationError(
+                "Due date cannot be in the past."
+            )
+        
+        return value
+    
+    def create(self, validated_data):
+        created_by = validated_data.pop("created_by")
+        store = validated_data["store"]
+
+        return Ticket.objects.create(
+            **validated_data,
+            created_by = created_by,
+            responsible_engineer = store.responsible_engineer,
+            contractor = store.contractor,
+            status = Ticket.Status.OPEN,
         )
