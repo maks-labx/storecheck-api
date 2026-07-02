@@ -3,6 +3,7 @@ from .models import Ticket
 from django.utils import timezone
 from rest_framework import serializers
 from apps.company.models import Store
+from rest_framework.exceptions import PermissionDenied
 
 class TicketSerializer(serializers.ModelSerializer):
     store_number = serializers.IntegerField(
@@ -86,6 +87,28 @@ class ManualTicketCreateSerializer(serializers.ModelSerializer):
             )
         
         return value
+    
+    def validate(self, attrs):
+        request = self.context["request"]
+        user = request.user
+        employee = getattr(user, "employee", None)
+
+        if employee is None:
+            raise PermissionDenied(
+                "User must be linked to an employee."
+            )
+        
+        store = attrs["store"]
+
+        if user.is_staff or user.is_superuser:
+            return attrs
+        
+        if store.store_director_id == employee.id:
+            return attrs
+        
+        raise PermissionDenied(
+            "Only the store director or admins can create manual tickets."
+        )
     
     def create(self, validated_data):
         created_by = validated_data.pop("created_by")
