@@ -110,6 +110,13 @@ class TicketStatusPermissionTests(APITestCase):
             contractor=self.contractor,
             due_date=timezone.now().date() + timedelta(days=3),
         )
+        self.admin_employee = Employee.objects.create(
+            user=self.admin_user,
+            employee_number=1005,
+            first_name="Admin",
+            last_name="User",
+            position=Employee.Position.CLUSTER_DIRECTOR,
+        )
 
         self.ticket_url = f"/api/tickets/{self.ticket.id}/"
 
@@ -183,3 +190,111 @@ class TicketStatusPermissionTests(APITestCase):
             response.status_code,
             status.HTTP_200_OK,
         )
+
+    def store_director_can_create_manual_ticket_for_own_store(self):
+        self.client.force_authenticate(user=self.store_director_user)
+
+        payload = {
+            "store": self.store.id,
+            "title": "Broken entrance door",
+            "description": "The entrance door does not close properly.",
+            "due_date": timezone.now().date() + timedelta(days=3),
+        }
+
+        response = self.client.post(
+            "/api/tickets/",
+            payload,
+            format = "json,"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_201_CREATED,
+        )
+        self.assertEqual(Ticket.objects.count(), 2)
+
+        ticket = Ticket.objects.latest("id")
+
+        self.assertIsNone(ticket.source_result)
+        self.assertEqual(ticket.status, Ticket.Status.OPEN)
+        self.assertEqual(ticket.created_by, self.store_director)
+        self.assertEqual(ticket.store, self.store)
+        self.assertEqual(
+            ticket.responsible_engineer,
+            self.store.responsible_engineer,
+        )
+        self.assertEqual(ticket.contractor, self.store.contractor)
+
+    def test_engineer_cannot_create_manual_ticket(self):
+        self.client.force_authenticate(user=self.engineer_user)
+
+        payload = {
+            "store": self.store.id,
+            "title": "Broken entrance door",
+            "description": "The entrance door does not close properly.",
+            "due_date": timezone.now().date() + timedelta(days=3),
+        }
+
+        response = self.client.post(
+            "/api/tickets/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.assertEqual(Ticket.objects.count(), 1)
+
+    def test_other_store_director_cannot_create_manual_ticket_for_another_store(self):
+        self.client.force_authenticate(
+            user=self.other_store_director_user,
+        )
+
+        payload = {
+            "store": self.store.id,
+            "title": "Broken entrance door",
+            "description": "The entrance door does not close properly.",
+            "due_date": timezone.now().date() + timedelta(days=3),
+        }
+
+        response = self.client.post(
+            "/api/tickets/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.assertEqual(Ticket.objects.count(), 1)
+
+    def test_admin_can_create_manual_ticket(self):
+        self.client.force_authenticate(user=self.admin_user)
+
+        payload = {
+            "store": self.store.id,
+            "title": "Broken entrance door",
+            "description": "The entrance door does not close properly.",
+            "due_date": timezone.now().date() + timedelta(days=3),
+        }
+
+        response = self.client.post(
+            "/api/tickets/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_201_CREATED,
+        )
+        self.assertEqual(Ticket.objects.count(), 2)
+
+        ticket = Ticket.objects.latest("id")
+
+        self.assertIsNone(ticket.source_result)
+        self.assertEqual(ticket.created_by, self.admin_employee)
+        self.assertEqual(ticket.status, Ticket.Status.OPEN)
