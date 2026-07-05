@@ -2,7 +2,7 @@
 
 StoreCheck API is a backend REST API for store inspections, checklist-based reports, defect tracking, and maintenance ticket management.
 
-The project is based on a simplified real-world business process: an engineer inspects a store, submits a checklist report, marks each checklist item as OK or Problem, and the system automatically creates maintenance tickets for all detected problems.
+The project is based on a simplified real-world business process: an engineer inspects a store, submits a checklist report, marks each checklist item as OK or Problem, and the system automatically creates maintenance tickets for all detected problems. Store directors can also create manual maintenance tickets for their own stores.
 
 ## Tech Stack
 
@@ -35,7 +35,9 @@ The project is based on a simplified real-world business process: an engineer in
 
   * authenticated users can access internal API data
   * only engineers can submit inspection reports
-  * reference data can be modified only by admin/staff users
+  * store directors can create manual tickets for their own stores
+  * store directors can close tickets for their own stores
+  * admin/staff users can manage reference data and tickets
 * Inspection report submission endpoint
 * Validation rules for inspection reports:
 
@@ -43,6 +45,7 @@ The project is based on a simplified real-world business process: an engineer in
   * OK items should not contain a description
   * all active checklist items must be submitted
 * Automatic maintenance ticket creation from problem inspection results
+* Manual maintenance ticket creation by store directors and admin/staff users
 * Ticket status tracking:
 
   * open
@@ -51,9 +54,11 @@ The project is based on a simplified real-world business process: an engineer in
 * API pagination
 * Filtering, search, and ordering for list endpoints
 * OpenAPI documentation with Swagger UI and ReDoc
-* Tests for the main inspection report submission flow, authentication, permissions, and reference data access rules
+* Tests for the main inspection report submission flow, authentication, permissions, reference data access rules, ticket status permissions, and manual ticket creation
 
 ## Business Flow
+
+### Inspection-based ticket creation
 
 ```text
 Engineer authenticates with JWT
@@ -74,6 +79,23 @@ The backend creates:
     - Inspection
     - Inspection item results
     - Maintenance tickets for all problem items
+```
+
+### Manual ticket creation
+
+```text
+Store director authenticates with JWT
+↓
+Store director creates a manual maintenance ticket for their own store
+↓
+The backend determines the creator from the authenticated user
+↓
+The backend automatically assigns:
+    - responsible engineer from the store
+    - contractor from the store
+    - open ticket status
+↓
+Manual tickets are created without an inspection result
 ```
 
 ## Authentication and Permissions
@@ -113,12 +135,22 @@ Authenticated users:
 
 Engineers:
     - can submit inspection reports
+    - cannot create manual tickets
+    - cannot close tickets
+
+Store directors:
+    - can create manual tickets for their own store
+    - can close tickets for their own store
 
 Admin/staff users:
     - can create, update, and delete reference data
+    - can create manual tickets for any store
+    - can update ticket status
 ```
 
 The inspector is not submitted by the client. It is automatically determined from the authenticated Django user linked to an Employee record.
+
+For manual tickets, the creator is also determined from the authenticated Django user linked to an Employee record.
 
 ## API Documentation
 
@@ -178,9 +210,14 @@ Only engineers can submit inspection reports.
 
 ```text
 GET /api/tickets/
+POST /api/tickets/
 GET /api/tickets/{id}/
 PATCH /api/tickets/{id}/
 ```
+
+Store directors can create manual tickets only for their own store. Admin/staff users can create manual tickets for any store.
+
+Store directors can close tickets only for their own store. Admin/staff users can update ticket status for any store.
 
 ## Submit Inspection Report Example
 
@@ -228,6 +265,54 @@ Successful response example:
 }
 ```
 
+## Manual Ticket Creation Example
+
+Manual tickets are created without an inspection result. The client sends only the store, title, description, and due date.
+
+```json
+{
+  "store": 1,
+  "title": "Broken entrance door",
+  "description": "The entrance door does not close properly.",
+  "due_date": "2026-07-10"
+}
+```
+
+Successful response example:
+
+```json
+{
+  "id": 2,
+  "ticket_number": "000002",
+  "source_result": null,
+  "title": "Broken entrance door",
+  "description": "The entrance door does not close properly.",
+  "store": 1,
+  "store_number": 101,
+  "created_by": 4,
+  "created_by_name": "John Director",
+  "responsible_engineer": 3,
+  "responsible_engineer_name": "Mike Engineer",
+  "contractor": 1,
+  "contractor_name": "FixIt Ltd",
+  "status": "open",
+  "created_at": "2026-07-05T12:00:00Z",
+  "due_date": "2026-07-10",
+  "is_overdue": false
+}
+```
+
+For manually created tickets, `source_result` is `null`.
+
+The backend automatically sets:
+
+```text
+created_by = authenticated user's employee
+responsible_engineer = store.responsible_engineer
+contractor = store.contractor
+status = open
+```
+
 ## Ticket Statuses
 
 Tickets use a simplified status workflow:
@@ -238,6 +323,21 @@ closed
 ```
 
 A new ticket is created with the `open` status.
+
+Tickets can be created in two ways:
+
+```text
+1. Automatically from problem inspection results
+2. Manually by store directors or admin/staff users
+```
+
+Inspection-based tickets have a linked `source_result`.
+
+Manual tickets have:
+
+```text
+source_result = null
+```
 
 A ticket is considered overdue when:
 
@@ -372,8 +472,6 @@ config/
 
 ## Future Improvements
 
-* Restrict ticket closing to the store director or admin
-* Manual ticket creation by store directors
 * Photo attachments for inspection problems and tickets
 * Ticket comments and history
 * Demo data management command
